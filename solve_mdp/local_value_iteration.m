@@ -4,7 +4,7 @@ function [rl_new, V_next, out_extra_args] = local_value_iteration(r, l, I, Vl, g
     nl = size(I,1);
     nu = size(Pl, 3);
     
-    if nargin < 10
+    if nargin < 9
         in_extra_args = [];
     end
 
@@ -14,7 +14,13 @@ function [rl_new, V_next, out_extra_args] = local_value_iteration(r, l, I, Vl, g
     if isfield(in_extra_args, 'convergence_tol')
         convergence_tol = in_extra_args.convergence_tol;
     else
-        convergence_tol = 1e-3;
+        convergence_tol = 1e-4;
+    end
+
+    if isfield(in_extra_args, 'baseCost')
+        baseCost = in_extra_args.baseCost;
+    else
+        baseCost = zeros(1,nx);
     end
 
     if isnumeric(I)
@@ -30,7 +36,7 @@ function [rl_new, V_next, out_extra_args] = local_value_iteration(r, l, I, Vl, g
         if m == l
             cost_to_go(I{l}) = Vl;
         else
-            cost_to_go(I{m}) = r(m);
+            cost_to_go(I{m}) = r(m) + baseCost(I{m});
         end
     end
     %% For sanity checks
@@ -83,11 +89,11 @@ function [rl_new, V_next, out_extra_args] = local_value_iteration(r, l, I, Vl, g
 %         dlj_index = dlj_index + 1;
 %     end
     if isnumeric(d)
-        rl_new = d * Vl; 
+        rl_new = d * (Vl - baseCost(I{l})'); 
     else
-        rl_new = feval(d, I{l}, l) * (Vl); 
+        rl_new = feval(d, I{l}, l) * (Vl - baseCost(I{l})'); 
     end
-    out_extra_args.el_new = max(abs(rl_new - Vl));
+    out_extra_args.el_new = max(abs(rl_new - (Vl - baseCost(I{l})')));
 %     rl_new = 0;
 %     for h = 1:length(I{l})
 %         for u = 1:nu

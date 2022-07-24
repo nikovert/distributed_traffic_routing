@@ -1,11 +1,9 @@
-function [costJ, policy, res_J] = valueIteration(g, P, alpha, NUM_ITER, convergence_tol)
+function [costJ, policy, res_J] = valueIteration(g, P, alpha, NUM_ITER, convergence_tol, costJ)
 %% Value Iteration
 % Initialize variables that we update during value iteration.
 % Cost (here it really is the reward):
 
 nx = size(g,1);
-
-costJ = zeros(1,nx);
 
 % Policy
 policy = zeros(1,nx);    
@@ -15,6 +13,9 @@ if nargin < 4
 end
 if nargin < 5
     convergence_tol = 1e-3;
+end
+if nargin < 6
+    costJ = zeros(1,nx);
 end
 
 for k=1:NUM_ITER
