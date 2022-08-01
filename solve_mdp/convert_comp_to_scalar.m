@@ -5,7 +5,7 @@ function [varargout] = convert_comp_to_scalar(varargin)
         if isnumeric(variable) || isa(variable,'function_handle')
             varargout{index} = variable;
         else
-            varargout{index} = variable{1};
+            varargout{index} = variable{6};
         end
     end
 end

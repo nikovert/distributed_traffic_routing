@@ -78,23 +78,31 @@ NodeProps = table(destination_ID, G.Nodes.XData(2626), G.Nodes.YData(4), ...
     'VariableNames', {'ID' 'XData', 'YData'});
 G = addnode(G, NodeProps);
 G = addedge(G, dest_node, length(G.Nodes.ID), 1);
-figure
+figure(10)
 graphPlot = plot(G, 'XData',G.Nodes.XData,'YData',G.Nodes.YData);
 %% Create Regions
-clustercount = 8;
-data = [G.Nodes.XData, G.Nodes.YData];
-[obj, c, ~, D] = kmeans(data,clustercount, 'Distance','sqeuclidean','emptyaction','drop');
+clustercount = 5;
+use_costAggregation = false;
+if exist('costJ_base') && use_costAggregation
+    data = costJ_base';
+else
+    data = [G.Nodes.XData, G.Nodes.YData];
+end
+[obj, c, ~, D] = kmeans(data,clustercount, 'Distance','sqeuclidean');
 
 G.Nodes.Cluster = obj;
-hold on; scatter(c(:,1), c(:,2), 40, 'r')
 %% Create convex hulls
 I = cell(clustercount,1);
+figure(10)
+hold on;
 for ind = 1:clustercount
     I{ind} = find(obj==ind)';
     x = G.Nodes.XData(I{ind});
     y = G.Nodes.YData(I{ind});
-    k = convhull(x,y);
-    fill(x(k), y(k), 'r','facealpha', 0.5 );
+    if length(I{ind}) > 2
+        k = convhull(x,y);
+        fill(x(k), y(k), 'r','facealpha', 0.5 );
+    end
 end
 
 %%
@@ -104,8 +112,9 @@ nl = clustercount;
 dest_index = length(G.Nodes.ID);
 
 % Create P(i,u,j)
+inf_value = 10000;
 P = zeros(nx,nx,nu);
-g = zeros(nx,nx,nu);
+g = ones(nx,nx,nu)*inf_value;
 % WARNING THIS MIGHT LEAD TO zero prob transition being favoured
 for i = 1:nx
     if i == dest_index
@@ -125,11 +134,11 @@ for i = 1:nx
             arclen = distance('gc',...
                 [G.Nodes.XData(i),G.Nodes.YData(i)], ...
                 [G.Nodes.XData(N(j_index)),G.Nodes.YData(N(j_index))]);
-            g(i, N(j_index), j_index) = deg2sm(arclen)/G.Edges.Weight(idxOut); 
+            g(i, N(j_index), j_index) = 60*deg2sm(arclen)/G.Edges.Weight(idxOut); 
         end
     end
     P(i, i, outdegree(G,i)+1:nu) = 1;
-    g(i, i, outdegree(G,i)+1:nu) = 100;
+    g(i, i, outdegree(G,i)+1:nu) = inf_value;
 
 end
 assert(min((sum(P, 2) - 1) < 10e-5, [], 'all'))
@@ -145,12 +154,16 @@ for i = 1:nl
     for node = I{i}
         index = index + 1;
 
-        % Compute incoing edges to calculate dissagregation prob
+        % Compute ingoing edges to calculate dissagregation prob
         [eid,nid] = outedges(G, node); % if directed, this needs to be inedges
         nid_new = setdiff(nid,I{i});
         [~,~,IB] = intersect(nid_new, nid);
-        incoming_w(index) = sum(G.Edges.Weight(eid(IB)));
+        %incoming_w(index) = sum(G.Edges.Weight(eid(IB)));
+        incoming_w(index) = ~isempty(eid(IB)); %length(eid(IB));
         total_in = total_in + incoming_w(index);
     end
     D{i} = incoming_w/total_in;
+
+%     Alternative even D
+%     D{i} = ones(size(I{i}))/length(I{i});
 end

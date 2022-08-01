@@ -1,16 +1,29 @@
 %% Discount factor.
-alpha = 0.5;
-
 convergence_tol = 1e-6;
 compute_true = true;
+use_congestion = true;
 %% Value Iteration
 % Initialize variables that we update during value iteration.
 % Cost (here it really is the reward):
 if compute_true
+    alpha = 1;
     tic;
-    [costJ, policy] = valueIteration(g, P, alpha, 10000, convergence_tol);
+    [costJ_base, policy_base] = valueIteration(g, P, alpha, 10000, convergence_tol);
+    graphPlot = plot_optimalEdge(G, policy_base);
     toc
     
+    if use_congestion
+        alpha = 1;
+        congestion = min(1, 0.25 + rand(size(g)));
+        g_congested = g .* congestion;
+    
+        tic;
+        [costJ, policy] = valueIteration(g_congested, P, alpha, 10000, convergence_tol);
+        toc
+    else
+        costJ = costJ_base;
+    end
+
     % display the optained costs
     disp('Result:');
     
@@ -37,7 +50,7 @@ end
 %%
 I_init = I;
 %% Aggregate Problem
-clear agent
+clear agent in_extra_args
 I = I_init;
 
 p = gcp('nocreate'); % If no pool, do not create new one.
@@ -51,9 +64,16 @@ agent = Composite([2,nl]);
 for m =1:nl
     a.l = m; % Agent index
     a.na = length(I{a.l});
-    a.Vl = ones(a.na, 1)*mean(costJ);
-    a.baseCost = zeros(size(costJ));
-    a.gl = g(I{a.l}, :, :); % Agent's knowledge of g
+    if use_congestion
+        a.Vl = costJ_base(I{a.l})';
+        a.baseCost = costJ_base;
+        a.gl = g_congested(I{a.l}, :, :); % Agent's knowledge of g
+        %a.gl = g(I{a.l}, :, :).*(1/congestion(I{a.l}, :, :) - 1); % Agent's knowledge of g
+    else
+        a.Vl = zeros(a.na, 1);
+        a.baseCost = zeros(size(costJ));
+        a.gl = g(I{a.l}, :, :); % Agent's knowledge of g
+    end
     a.Pl = P(I{a.l}, :, :); % Agent's knowledge of P
     a.I = I; % Agent's knowledge of global I
     a.dl = D{a.l};
