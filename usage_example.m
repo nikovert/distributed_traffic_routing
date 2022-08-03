@@ -50,17 +50,20 @@ p = plot(SG, 'XData',SG.Nodes.XData,'YData',SG.Nodes.YData);
 
 %% Plot on map
 figure(100);
-geobasemap streets
-geolimits([min(SG.Nodes.YData) max(SG.Nodes.YData)],[min(SG.Nodes.XData) max(SG.Nodes.XData)])
+gx = geoaxes;
+geobasemap(gx,'streets');
+gx.FontSize = 12;
+%geolimits([min(SG.Nodes.YData) max(SG.Nodes.YData)],[min(SG.Nodes.XData) max(SG.Nodes.XData)])
+geolimits(gx, [51.7367   51.7520],[-1.2483   -1.2185])
 hold on
-geoscatter(SG.Nodes.YData, SG.Nodes.XData)
+geoscatter(gx, SG.Nodes.YData, SG.Nodes.XData)
 
 from_y = SG.Nodes.YData(SG.Edges.EndNodes(:,1));
 from_x = SG.Nodes.XData(SG.Edges.EndNodes(:,1));
 to_y = SG.Nodes.YData(SG.Edges.EndNodes(:,2));
 to_x = SG.Nodes.XData(SG.Edges.EndNodes(:,2));
 for e = 1:size(SG.Edges,1)
-    geoplot([from_y(e) to_y(e)],[from_x(e) to_x(e)], 'b:');
+    geoplot(gx, [from_y(e) to_y(e)],[from_x(e) to_x(e)], 'b:');
 end
 %% plan a route
 

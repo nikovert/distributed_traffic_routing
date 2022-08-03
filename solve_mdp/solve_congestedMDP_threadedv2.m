@@ -90,7 +90,7 @@ for m = 1:nl
         agent.r =  c;
     end
     agent.r_old = zeros(nl,1);
-    agent.transmission_thresh = 1e-5;
+    agent.transmission_thresh = 1e-1;
     agentList{m} = agent;
 end
 toc
@@ -106,15 +106,25 @@ agent_pools = cell(nl,1);
 communication_order = [];
 
 transmission_history = cell(nl,1);
+iterations = cell(nl,1);
+status_history = cell(nl,1);
 total_iterations = 0;
 costJ_agg = nan(1,nx);
+
+%% Run
 tic;
 while max(abs(global_r_prev - global_r)) > 1.0e-02 || total_iterations == 0
     disp('starting a new iteration...')
     global_r_prev = global_r;
     parfor m = 1:nl
-        [agentList{m}, iterations, t_hist] = solve_aggregatedValueIteration(agentList{m}, alpha, message_pool);
+        [agentList{m}, iter, t_hist, status_history{m}] = solve_aggregatedValueIteration(agentList{m}, alpha, message_pool);
         transmission_history{m} = [transmission_history{m} t_hist];
+        status_history{m} = [status_history{m} t_hist];
+        if isempty(iterations{m})
+            iterations{m} = iter;
+        else
+            iterations{m} = iterations{m} + iter;
+        end
     end
 %     for m = 1:nl
 %         agentList{m}.r(setdiff(1:nl, m)) = global_r(setdiff(1:nl, m));
@@ -123,26 +133,30 @@ while max(abs(global_r_prev - global_r)) > 1.0e-02 || total_iterations == 0
     total_iterations = total_iterations + 1;
     break
 end
+toc
 
 delta = nan(nl,1);
 for l = 1:nl
     costJ_agg(I{l}) = agentList{l}.Vl;
     delta(l) = max(agentList{l}.Vl) - min(agentList{l}.Vl);
 end
-   
+
+%% Plot
 tstart = inf;
 for m=1:nl
     tstart = min(tstart, agentList{m}.rl_hist(2,1));
 end
 
-% Create figure
+% Create transmission figure
+colors = {'red', 'green', 'blue', 'cyan', 'magenta', 'yellow'};
 figure1 = figure;
 axes1 = axes('Parent',figure1);
 hold(axes1,'on');
 for m=1:nl
-    plot(agentList{m}.rl_hist(2,:)-tstart, agentList{m}.rl_hist(1,:),'DisplayName',['$r_', num2str(m), '$'])
+    plot(agentList{m}.rl_hist(2,:)-tstart, agentList{m}.rl_hist(1,:),'DisplayName',['$r_', num2str(m), '$'], 'LineWidth', 3, 'Color', colors{m});
     r_inter = interp1(agentList{m}.rl_hist(2,:),agentList{m}.rl_hist(1,:),transmission_history{m});
-    scatter(transmission_history{m}-tstart, r_inter, 'DisplayName',['transmission of $r_', num2str(m), '$']);
+    scatter(transmission_history{m}-tstart, r_inter, 50, 'filled', colors{m}, 'DisplayName',['transmission of $r_', num2str(m), '$']);  
+    xline(transmission_history{m}-tstart, '--', 'HandleVisibility','off');
 end
 % Create ylabel and xlabel
 ylabel('r','Interpreter','latex');
@@ -152,7 +166,6 @@ set(legend1,...
     'Position',[0.630153488465238 0.135317454356997 0.257941786016342 0.363095230147952],...
     'Interpreter','latex');
 
-toc
 figure();
 plot_cost(costJ, costJ_agg, global_r, I);
 disp('max error:')
@@ -161,12 +174,13 @@ disp('average error')
 disp(mean(abs(costJ-costJ_agg)))
 
 %% functions
-function [agent, iterations, transmission_history] = solve_aggregatedValueIteration(agent, alpha, message_pool)
+function [agent, iterations, transmission_history, status_tracker] = solve_aggregatedValueIteration(agent, alpha, message_pool)
     nl = length(agent.r);
-    max_iter = nl*10;
+    max_iter = nl*100;
     iterations = 0;
     status = zeros(nl,1);
-    
+    status_tracker = {status, cputime};
+
     % Create and send pool
     agent.pool = parallel.pool.PollableDataQueue;
     send_msg = {agent.l, inf, agent.pool};
@@ -179,14 +193,14 @@ function [agent, iterations, transmission_history] = solve_aggregatedValueIterat
     last_transmitted_r = -inf;
     while sum(status) < nl && iterations < max_iter
         %% Compute optimal next r
-        agent.r_old(agent.l) = agent.r(agent.l);
+        agent.r_old = agent.r;
         in_extra_args.baseCost = agent.baseCost;
-        [agent.rl_new, agent.Vl, out_extra_args] = local_value_iteration(agent.r, agent.l, agent.I, agent.Vl, agent.gl, agent.Pl, alpha, agent.dl, in_extra_args);
+        [agent.rl_new, agent.Vl, ~] = local_value_iteration(agent.r, agent.l, agent.I, agent.Vl, agent.gl, agent.Pl, alpha, agent.dl, in_extra_args);
         agent.r(agent.l) = agent.rl_new;    
         agent.rl_hist(:, end+1) = [agent.r(agent.l); cputime];
 
         % Send out new r
-        if abs(last_transmitted_r - agent.r(agent.l)) > agent.transmission_thresh
+        if abs(last_transmitted_r - agent.r(agent.l)) >= agent.transmission_thresh
             send_msg = {agent.l, agent.r(agent.l)};
             transmission_history = [transmission_history cputime];
             send(message_pool, send_msg);
@@ -197,7 +211,7 @@ function [agent, iterations, transmission_history] = solve_aggregatedValueIterat
         [receive_msg, OK] = poll(agent.pool, 1);
         while OK
             if isnan(receive_msg{2})
-                status(receive_msg{1}) = 1;
+                status(receive_msg{1}) = ~status(receive_msg{1});
             else
                 agent.r_old(receive_msg{1}) = agent.r(receive_msg{1});
                 agent.r(receive_msg{1}) = receive_msg{2};
@@ -206,8 +220,18 @@ function [agent, iterations, transmission_history] = solve_aggregatedValueIterat
         end
 
         % Check status of completion
-        if max(abs(agent.r_old - agent.r)) < 1e-3 && iterations > 1
+        if ~status(agent.l) && max(abs(agent.r_old - agent.r)) < max(1e-3,agent.transmission_thresh) && iterations > 1
             status(agent.l) = 1;
+            status_tracker{1} = [status_tracker{1} status];
+            status_tracker{2} = [status_tracker{2} cputime];
+
+            send_msg = {agent.l, nan};
+            send(message_pool, send_msg);
+        elseif status(agent.l)
+            status(agent.l) = 0;
+            status_tracker{1} = [status_tracker{1} status];
+            status_tracker{2} = [status_tracker{2} cputime];
+
             send_msg = {agent.l, nan};
             send(message_pool, send_msg);
         end
