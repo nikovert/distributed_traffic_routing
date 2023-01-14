@@ -83,6 +83,8 @@ G = addnode(G, NodeProps);
 G = addedge(G, dest_node, length(G.Nodes.ID), 1);
 figure(10)
 graphPlot = plot(G, 'XData',G.Nodes.XData,'YData',G.Nodes.YData);
+xlabel('Longitude', 'FontSize',15, 'Interpreter','latex')
+ylabel('Latitude', 'FontSize',15, 'Interpreter','latex')
 %% Create Regions
 clustercount = 5;
 use_costAggregation = false;
@@ -137,7 +139,7 @@ for i = 1:nx
             arclen = distance('gc',...
                 [G.Nodes.XData(i),G.Nodes.YData(i)], ...
                 [G.Nodes.XData(N(j_index)),G.Nodes.YData(N(j_index))]);
-            g(i, N(j_index), j_index) = 60*deg2sm(arclen)/G.Edges.Weight(idxOut); 
+            g(i, N(j_index), j_index) = 60*deg2sm(arclen)/G.Edges.Weight(idxOut); % 60 to convert from hours to minutes
         end
     end
     P(i, i, outdegree(G,i)+1:nu) = 1;
@@ -170,3 +172,6 @@ for i = 1:nl
 %     Alternative even D
 %     D{i} = ones(size(I{i}))/length(I{i});
 end
+%% Solve congested MDP problem
+addpath('solve_mdp')
+solve_congestedMDP_threadedv2

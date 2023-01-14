@@ -2,26 +2,33 @@
 convergence_tol = 1e-6;
 compute_true = true;
 use_congestion = true;
-alpha = 0.99;
+use_baseCost = false;
+alpha = 0.99; %  If use_congestion=1, this alpha is used only to compute the base cost
 %% Value Iteration
 % Initialize variables that we update during value iteration.
 % Cost (here it really is the reward):
 if compute_true
-    tic;
-    [costJ_base, policy_base] = valueIteration(g, P, alpha, 10000, convergence_tol);
-    graphPlot = plot_optimalEdge(G, policy_base);
-    toc
+    if use_baseCost
+        tic;
+        [costJ_base, policy_base] = valueIteration(g, P, alpha, 10000, convergence_tol);
+        graphPlot = plot_optimalEdge(G, policy_base);
+        toc
+    end
     
     if use_congestion
         alpha = 0.9;
-        congestion = min(1, 0.25 + rand(size(g)));
+        congestion = 0.25 + 0.75*rand(size(g));
         g_congested = g ./congestion;
     
         tic;
         [costJ, policy] = valueIteration(g_congested, P, alpha, 10000, convergence_tol);
         toc
-    else
+    elseif use_baseCost
         costJ = costJ_base;
+    else
+        tic;
+        [costJ, policy] = valueIteration(g, P, alpha, 10000, convergence_tol);
+        toc
     end
 
     % display the optained costs
@@ -57,13 +64,11 @@ else
     p = parpool('threads');
 end
 
-
 message_pool = parallel.pool.DataQueue;
 afterEach(message_pool, @relay);
 
 tic
 agentList = cell(nl,1);
-use_baseCost = false;
 for m = 1:nl
     agent.l = m; % Agent index
     agent.na = length(I{agent.l});
@@ -159,12 +164,12 @@ for m=1:nl
     xline(transmission_history{m}-tstart, '--', 'HandleVisibility','off');
 end
 % Create ylabel and xlabel
-ylabel('r','Interpreter','latex');
-xlabel({'time'},'Interpreter','latex');
+ylabel('r','Interpreter','latex', 'FontSize',15);
+xlabel({'time'},'Interpreter','latex', 'FontSize',15);
 legend1 = legend(axes1,'show');
 set(legend1,...
     'Position',[0.630153488465238 0.135317454356997 0.257941786016342 0.363095230147952],...
-    'Interpreter','latex');
+    'Interpreter','latex','FontSize',15);
 
 figure();
 plot_cost(costJ, costJ_agg, global_r, I);

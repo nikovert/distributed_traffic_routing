@@ -67,7 +67,7 @@ function plot_cost(costJ, costJ_agg, r, I)
     xlabel('Node number (sorted by $J^*$)','Interpreter','latex');
 
     % Set the remaining axes properties
-    set(axis,'TickLabelInterpreter','latex');
+    set(axis,'FontSize',15, 'TickLabelInterpreter','latex');
     % Create legend
     legend1 = legend(axis,'show');
     set(legend1,...
