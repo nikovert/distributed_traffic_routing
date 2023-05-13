@@ -4,7 +4,7 @@ function plot_cost(costJ, costJ_agg, r, I)
     
     hold off;
     [cost, cost_index] = sort_single_col([costJ', costJ_agg', r_lst, agent_lst], 1);
-    stem(1:nx, cost(:,2), ':diamondr', 'MarkerSize', 1);hold on;
+    stairs(1:nx, cost(:,2), ':diamondr', 'MarkerSize', 1);hold on;
     scatter(1:nx, cost(:,1),1,'MarkerFaceColor','b','MarkerEdgeColor','b',...
     'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',.2); 
     

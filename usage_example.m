@@ -172,6 +172,8 @@ for i = 1:nl
 %     Alternative even D
 %     D{i} = ones(size(I{i}))/length(I{i});
 end
+%% Save workspace
+save('map_workspace.mat', '-v7.3')
 %% Solve congested MDP problem
 addpath('solve_mdp')
 solve_congestedMDP_threadedv2

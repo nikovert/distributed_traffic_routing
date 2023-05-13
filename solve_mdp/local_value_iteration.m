@@ -24,7 +24,7 @@ function [rl_new, V_next, out_extra_args] = local_value_iteration(r, l, I, Vl, g
     end
 
     if isnumeric(I)
-        I = mat2cell(I,ones(1,nl),[nx/nl]);
+        I = mat2cell(I,ones(1,nl),nx/nl);
     end
 
     assert(size(I{l},2) == size(gl, 1))

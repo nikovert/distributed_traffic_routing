@@ -3,7 +3,7 @@ convergence_tol = 1e-6;
 compute_true = true;
 use_congestion = true;
 use_baseCost = false;
-alpha = 0.99; %  If use_congestion=1, this alpha is used only to compute the base cost
+alpha = 0.90; %  If use_congestion=1, this alpha is used only to compute the base cost
 %% Value Iteration
 % Initialize variables that we update during value iteration.
 % Cost (here it really is the reward):
@@ -131,9 +131,6 @@ while max(abs(global_r_prev - global_r)) > 1.0e-02 || total_iterations == 0
             iterations{m} = iterations{m} + iter;
         end
     end
-%     for m = 1:nl
-%         agentList{m}.r(setdiff(1:nl, m)) = global_r(setdiff(1:nl, m));
-%     end
     disp(['global_r: ', num2str(global_r')]);
     total_iterations = total_iterations + 1;
     break
@@ -160,12 +157,14 @@ hold(axes1,'on');
 for m=1:nl
     plot(agentList{m}.rl_hist(2,:)-tstart, agentList{m}.rl_hist(1,:),'DisplayName',['$r_', num2str(m), '$'], 'LineWidth', 3, 'Color', colors{m});
     r_inter = interp1(agentList{m}.rl_hist(2,:),agentList{m}.rl_hist(1,:),transmission_history{m});
-    scatter(transmission_history{m}-tstart, r_inter, 50, 'filled', colors{m}, 'DisplayName',['transmission of $r_', num2str(m), '$']);  
+    scatter(transmission_history{m}-tstart, r_inter, 50, 'filled', colors{m}, 'DisplayName',['broadcast $r_', num2str(m), '$']);  
     xline(transmission_history{m}-tstart, '--', 'HandleVisibility','off');
 end
+
 % Create ylabel and xlabel
 ylabel('r','Interpreter','latex', 'FontSize',15);
 xlabel({'time'},'Interpreter','latex', 'FontSize',15);
+xlim([0, ceil(agentList{m}.rl_hist(2,end)-tstart)]);
 legend1 = legend(axes1,'show');
 set(legend1,...
     'Position',[0.630153488465238 0.135317454356997 0.257941786016342 0.363095230147952],...
@@ -178,6 +177,13 @@ disp(max(abs(costJ-costJ_agg)))
 disp('average error')
 disp(mean(abs(costJ-costJ_agg)))
 
+disp('normalized max error:')
+disp(max(abs(costJ-costJ_agg)/abs(costJ)))
+disp('normalized average error')
+disp(mean(abs(costJ-costJ_agg))/mean(costJ))
+
+%% Save
+%save('solved_workspace.mat', '-v7.3')
 %% functions
 function [agent, iterations, transmission_history, status_tracker] = solve_aggregatedValueIteration(agent, alpha, message_pool)
     nl = length(agent.r);
@@ -272,7 +278,4 @@ function relay(msg)
             send(agent_pools{m}, msg);
         end
     end
-%     if mod(global_iterations, 100) == 0
-%         disp(['epsilon: ', num2str(global_epsilon')]);
-%     end
 end
