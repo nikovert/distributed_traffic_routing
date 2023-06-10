@@ -19,7 +19,8 @@
 % derived from the openstreetmap add on by Ioannis Filippidis, jfilippidis@gmail.com
 
 addpath('osm_parsing')
-addpath('../Add-Ons/xml2struct')
+addpath('xml2struct')
+addpath('solve_mdp')
 %% name file
 openstreetmap_filename = 'maps/oxford.osm';
 %map_img_filename = 'map.png'; % image file saved from online, if available
@@ -175,5 +176,4 @@ end
 %% Save workspace
 save('map_workspace.mat', '-v7.3')
 %% Solve congested MDP problem
-addpath('solve_mdp')
 solve_congestedMDP_threadedv2

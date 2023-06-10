@@ -155,9 +155,9 @@ figure1 = figure;
 axes1 = axes('Parent',figure1);
 hold(axes1,'on');
 for m=1:nl
-    plot(agentList{m}.rl_hist(2,:)-tstart, agentList{m}.rl_hist(1,:),'DisplayName',['$r_', num2str(m), '$'], 'LineWidth', 3, 'Color', colors{m});
+    plot(agentList{m}.rl_hist(2,:)-tstart, agentList{m}.rl_hist(1,:),'DisplayName',['$r_{', num2str(m), num2str(m), '}$'], 'LineWidth', 3, 'Color', colors{m});
     r_inter = interp1(agentList{m}.rl_hist(2,:),agentList{m}.rl_hist(1,:),transmission_history{m});
-    scatter(transmission_history{m}-tstart, r_inter, 50, 'filled', colors{m}, 'DisplayName',['broadcast $r_', num2str(m), '$']);  
+    scatter(transmission_history{m}-tstart, r_inter, 50, 'filled', colors{m}, 'DisplayName',['broadcast $r_{', num2str(m), num2str(m), '}$']);  
     xline(transmission_history{m}-tstart, '--', 'HandleVisibility','off');
 end
 
@@ -178,9 +178,9 @@ disp('average error')
 disp(mean(abs(costJ-costJ_agg)))
 
 disp('normalized max error:')
-disp(max(abs(costJ-costJ_agg)/abs(costJ)))
-disp('normalized average error')
-disp(mean(abs(costJ-costJ_agg))/mean(costJ))
+disp(join([num2str(100*max(abs(costJ(costJ>0)-costJ_agg(costJ>0))./(costJ(costJ>0)))), '\%']))
+disp('normalized average error:')
+disp(join([num2str(100*mean(abs(costJ(costJ>0)-costJ_agg(costJ>0))./(costJ(costJ>0)))), '\%']))
 
 %% Save
 %save('solved_workspace.mat', '-v7.3')

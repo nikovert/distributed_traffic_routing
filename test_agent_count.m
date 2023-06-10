@@ -19,7 +19,8 @@
 % derived from the openstreetmap add on by Ioannis Filippidis, jfilippidis@gmail.com
 
 addpath('osm_parsing')
-addpath('../Add-Ons/xml2struct')
+addpath('xml2struct')
+addpath('solve_mdp')
 %% name file
 openstreetmap_filename = 'maps/oxford.osm';
 %map_img_filename = 'map.png'; % image file saved from online, if available
@@ -146,23 +147,17 @@ end
 disp(dispstr);
 
 % Plot Value function
-figure;
-stem(1:nx, costJ);
-hold off;
-grid;
+% figure;
+% stem(1:nx, costJ);
+% hold off;
+% grid;
 
 axis = gca;
 axis.YLim = [min(costJ)-10, max(costJ)+10];
 
 %% Create Regions
-addpath('solve_mdp')
-for nl = 1:8
-    use_costAggregation = false;
-    if exist('costJ_base') && use_costAggregation
-        data = costJ_base';
-    else
-        data = [G.Nodes.XData, G.Nodes.YData];
-    end
+for nl = 4:4:20
+    data = [G.Nodes.XData, G.Nodes.YData];
     [obj, c, ~, D] = kmeans(data,nl, 'Distance','sqeuclidean');
     
     G.Nodes.Cluster = obj;
@@ -284,16 +279,16 @@ for nl = 1:8
         costJ_agg(I{l}) = agentList{l}.Vl;
         delta(l) = max(agentList{l}.Vl) - min(agentList{l}.Vl);
     end
-    
+
     disp('normalized max error:')
-    disp(max(abs(costJ-costJ_agg)./mean(costJ)))
-    disp('normalized average error')
-    disp(mean(abs(costJ-costJ_agg)./mean(costJ)))
+    disp(join([num2str(100*max(abs(costJ(costJ>0)-costJ_agg(costJ>0))./(costJ(costJ>0)))), '\%']))
+    disp('normalized average error:')
+    disp(join([num2str(100*mean(abs(costJ(costJ>0)-costJ_agg(costJ>0))./(costJ(costJ>0)))), '\%']))
 
     filename = join(['nl_' num2str(nl) '_solved_workspace.mat']);
     clear agent_pools global_r global_epsilon global_iterations communication_order message_pool
     delete(gcp)
-    save(filename, '-v7.3')
+    save(filename, '-v7.3', 'costJ', 'costJ_agg')
 end
 %% functions
 function [agent, iterations, transmission_history, status_tracker] = solve_aggregatedValueIteration(agent, alpha, message_pool)
